@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liga FalconrySur · Calculadora de Altanería</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+  :root{
+    --bg: #F7F7F3;
+    --surface: #FFFFFF;
+    --ink: #1C2117;
+    --muted: #5B5F55;
+    --green: #2E6F45;
+    --green-dark: #1F4E31;
+    --green-light: #E6F0E8;
+    --brown: #8B5A34;
+    --brown-light: #F1E7DB;
+    --border: #E5E2D8;
+    --gold: #F4C77A;
+    --display: 'Manrope', sans-serif;
+    --body: 'Inter', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+    --radius: 16px;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{ background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.55; }
+
+  header{
+    background:var(--surface); border-bottom:1px solid var(--border);
+    position:sticky; top:0; z-index:20;
+  }
+  .nav{
+    max-width:1160px; margin:0 auto; padding:14px 20px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  }
+  .brand{ font-family:var(--display); font-weight:800; font-size:1.15rem; text-decoration:none; color:var(--ink); }
+  .brand span{ color:var(--green); }
+  .nav small{ font-family:var(--mono); color:var(--muted); }
+
+  main{ max-width:1160px; margin:0 auto; padding:28px 20px 60px; }
+  h1{ font-family:var(--display); font-weight:800; font-size:clamp(1.5rem,3vw,2.1rem); }
+  .sub{ color:var(--muted); margin:6px 0 22px; max-width:70ch; }
+
+  .tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; }
+  .tabs button{
+    font-family:var(--mono); font-size:.85rem; font-weight:600; cursor:pointer;
+    padding:10px 16px; border-radius:999px; border:1px solid var(--border);
+    background:var(--surface); color:var(--muted);
+  }
+  .tabs button.active{ background:var(--green); border-color:var(--green); color:#fff; }
+
+  .panel{ display:none; }
+  .panel.active{ display:block; }
+
+  .grid{ display:grid; grid-template-columns: 1.1fr .9fr; gap:22px; align-items:start; }
+  @media (max-width: 860px){ .grid{ grid-template-columns:1fr; } }
+
+  .card{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:22px;
+  }
+  .card h2{ font-family:var(--display); font-size:1.05rem; font-weight:800; margin-bottom:14px; }
+  .card h2 small{ font-family:var(--mono); font-weight:600; color:var(--muted); display:block; font-size:.72rem; margin-top:2px; }
+
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-weight:600; font-size:.88rem; margin-bottom:5px; }
+  .field label em{ font-style:normal; font-family:var(--mono); font-size:.72rem; color:var(--muted); }
+  .field input, .field select{
+    width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:10px;
+    font-family:var(--mono); font-size:.95rem; background:var(--bg); color:var(--ink);
+  }
+  .field input:focus, .field select:focus{ outline:2px solid var(--green-light); border-color:var(--green); }
+  .hint{ font-size:.76rem; color:var(--muted); margin-top:4px; }
+
+  .scores{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .score{
+    background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:12px 14px;
+  }
+  .score .k{ font-family:var(--mono); font-size:.7rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .score .v{ font-family:var(--display); font-weight:800; font-size:1.35rem; margin-top:2px; }
+  .score .d{ font-size:.72rem; color:var(--muted); }
+  .total{
+    grid-column:1 / -1; background:var(--green); color:#fff; border-color:var(--green);
+  }
+  .total .k{ color:var(--green-light); }
+  .total .v{ font-size:2.1rem; color:var(--gold); }
+  .total .d{ color:var(--green-light); }
+
+  .save-box{ margin-top:20px; border-top:1px dashed var(--border); padding-top:18px; }
+  .save-status{
+    font-family:var(--mono); font-size:.78rem; padding:10px 12px; border-radius:10px; margin-bottom:14px;
+    background:var(--brown-light); color:var(--brown);
+  }
+  .save-status.ok{ background:var(--green-light); color:var(--green-dark); }
+
+  .btn{
+    display:inline-block; width:100%; text-align:center; cursor:pointer;
+    background:var(--green); color:#fff; border:none; border-radius:12px;
+    padding:14px 18px; font-family:var(--display); font-weight:800; font-size:1rem;
+  }
+  .btn:hover:not(:disabled){ background:var(--green-dark); }
+  .btn:disabled{ background:var(--border); color:var(--muted); cursor:not-allowed; }
+
+  .msg{ margin-top:12px; font-size:.85rem; padding:10px 12px; border-radius:10px; display:none; }
+  .msg.err{ display:block; background:#FBEAEA; color:#8C2F2F; }
+  .msg.ok{ display:block; background:var(--green-light); color:var(--green-dark); }
+
+  table{ width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  th, td{ padding:11px 14px; text-align:left; font-size:.9rem; border-bottom:1px solid var(--border); }
+  th{ font-family:var(--mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); background:var(--bg); }
+  tr:last-child td{ border-bottom:none; }
+  td.num, th.num{ text-align:right; font-family:var(--mono); }
+  .pos-1 td:first-child{ color:var(--brown); font-weight:800; }
+  .table-wrap{ overflow-x:auto; border-radius:var(--radius); }
+  .empty{ color:var(--muted); font-size:.9rem; padding:18px; text-align:center; }
+
+  .jornada-bar{ display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+  .jornada-bar select{ padding:9px 12px; border:1px solid var(--border); border-radius:10px; font-family:var(--mono); background:var(--surface); }
+  footer{ text-align:center; padding:26px; color:var(--muted); font-size:.8rem; }
+  footer a{ color:var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a class="brand" href="index.html"><span>FalconrySur</span> · Liga</a>
+    <small>ALTANERÍA · CALCULADORA OFICIAL</small>
+  </div>
+</header>
+
+<main>
+  <h1>Calculadora de puntuación · Altanería</h1>
+  <p class="sub">Introduce los datos del vuelo tal y como aparecen en la app GPS de tu halcón. La puntuación se calcula al instante. Para que el vuelo cuente en la liga, guárdalo el día de jornada adjuntando la captura de pantalla del GPS como prueba.</p>
+
+  <div class="tabs">
+    <button class="active" data-tab="calc">Calculadora</button>
+    <button data-tab="jornada">Clasificación por jornada</button>
+    <button data-tab="general">Clasificación general</button>
+  </div>
+
+  <!-- ================= CALCULADORA ================= -->
+  <section id="tab-calc" class="panel active">
+    <div class="grid">
+      <div class="card">
+        <h2>Datos del vuelo</h2>
+        <div class="field">
+          <label>Ascenso <em>(m/min)</em></label>
+          <input type="text" id="in-ascenso" inputmode="decimal" placeholder="ej.: 45">
+          <div class="hint">2 pts por cada 10 m/min por encima de 20 m/min.</div>
+        </div>
+        <div class="field">
+          <label>Altura <em>(m)</em></label>
+          <input type="text" id="in-altura" inputmode="decimal" placeholder="ej.: 220">
+          <div class="hint">1 pt por cada 10 m por encima de 100 m.</div>
+        </div>
+        <div class="field">
+          <label>Servicio <em>(grados, máx. 90º)</em></label>
+          <input type="text" id="in-servicio" inputmode="decimal" placeholder="ej.: 75">
+          <div class="hint">40º = 0 pts · 90º = 15 pts, reparto lineal.</div>
+        </div>
+        <div class="field">
+          <label>Velocidad máxima <em>(km/h)</em></label>
+          <input type="text" id="in-velmax" inputmode="decimal" placeholder="ej.: 180">
+          <div class="hint">1 pt por cada 10 km/h por encima de 100 km/h.</div>
+        </div>
+        <div class="field">
+          <label>Tiempo de vuelo <em>(min:seg, máx. 10:00)</em></label>
+          <input type="text" id="in-tiempo" inputmode="numeric" placeholder="ej.: 8:50">
+          <div class="hint">Si el vuelo supera 5 min: 1 pt por cada minuto completo no utilizado de los 10.</div>
+        </div>
+
+        <div class="save-box">
+          <h2>Guardar vuelo de jornada <small id="estado-jornada">COMPROBANDO DÍA DE JORNADA…</small></h2>
+          <div class="save-status" id="save-status">Conectando con la liga…</div>
+          <div class="field">
+            <label>Participante</label>
+            <select id="in-participante"><option value="">— Elige tu nombre —</option></select>
+          </div>
+          <div class="field">
+            <label>Captura de pantalla del GPS <em>(prueba del vuelo)</em></label>
+            <input type="file" id="in-captura" accept="image/*">
+          </div>
+          <button class="btn" id="btn-guardar" disabled>Guardar vuelo</button>
+          <div class="msg" id="save-msg"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Puntuación</h2>
+        <div class="scores">
+          <div class="score"><div class="k">Ascenso</div><div class="v" id="p-ascenso">0</div><div class="d" id="d-ascenso">&nbsp;</div></div>
+          <div class="score"><div class="k">Altura</div><div class="v" id="p-altura">0</div><div class="d" id="d-altura">&nbsp;</div></div>
+          <div class="score"><div class="k">Servicio</div><div class="v" id="p-servicio">0</div><div class="d" id="d-servicio">&nbsp;</div></div>
+          <div class="score"><div class="k">Vel. máx.</div><div class="v" id="p-velmax">0</div><div class="d" id="d-velmax">&nbsp;</div></div>
+          <div class="score"><div class="k">Bonus tiempo</div><div class="v" id="p-tiempo">0</div><div class="d" id="d-tiempo">&nbsp;</div></div>
+          <div class="score total"><div class="k">Puntuación total</div><div class="v" id="p-total">0</div><div class="d">puntos</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CLASIFICACIÓN JORNADA ================= -->
+  <section id="tab-jornada" class="panel">
+    <div class="jornada-bar">
+      <label for="sel-jornada" style="font-weight:600;">Jornada:</label>
+      <select id="sel-jornada"></select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Pos.</th><th>Participante</th><th>Halcón</th><th class="num">Puntos</th><th>Estado</th></tr></thead>
+        <tbody id="tbody-jornada"><tr><td colspan="5" class="empty">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= CLASIFICACIÓN GENERAL ================= -->
+  <section id="tab-general" class="panel">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Pos.</th><th>Participante</th><th class="num">Jornadas</th><th class="num">Puntos totales</th></tr></thead>
+        <tbody id="tbody-general"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer>
+  © FalconrySur · Liga de altanería · <a href="director.html">Acceso director</a>
+</footer>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+// ============================================================
+// BAREMO OFICIAL — debe coincidir con el trigger de Supabase
+// ============================================================
+function num(v){
+  if (v === null || v === undefined) return NaN;
+  return parseFloat(String(v).trim().replace(',', '.'));
+}
+// Devuelve segundos, o null si el formato no es válido
+function parseTiempo(txt){
+  txt = String(txt || '').trim();
+  if (!txt) return null;
+  const m = txt.match(/^(\d{1,2})(?:[:.,'](\d{1,2}))?$/);
+  if (!m) return null;
+  const min = parseInt(m[1], 10);
+  const seg = m[2] ? parseInt(m[2], 10) : 0;
+  if (seg > 59) return null;
+  return min * 60 + seg;
+}
+function calcularPuntos(d){
+  const p = {};
+  p.ascenso  = Math.max(0, (d.ascenso - 20) * 0.2);
+  p.altura   = Math.max(0, (d.altura - 100) * 0.1);
+  p.servicio = Math.min(15, Math.max(0, (d.servicio - 40) * 0.3));
+  p.velmax   = Math.max(0, (d.velmax - 100) * 0.1);
+  p.tiempo   = (d.tiempoSeg > 300 && d.tiempoSeg <= 600)
+             ? Math.floor((600 - d.tiempoSeg) / 60) : 0;
+  p.total = p.ascenso + p.altura + p.servicio + p.velmax + p.tiempo;
+  return p;
+}
+function fmt(n){
+  return (Math.round(n * 100) / 100).toLocaleString('es-ES', { maximumFractionDigits: 2 });
+}
+
+// ============================================================
+// CALCULADORA EN VIVO
+// ============================================================
+const $ = id => document.getElementById(id);
+const inputs = ['in-ascenso','in-altura','in-servicio','in-velmax','in-tiempo'];
+
+function leerDatos(){
+  return {
+    ascenso:  num($('in-ascenso').value)  || 0,
+    altura:   num($('in-altura').value)   || 0,
+    servicio: Math.min(90, num($('in-servicio').value) || 0),
+    velmax:   num($('in-velmax').value)   || 0,
+    tiempoSeg: parseTiempo($('in-tiempo').value)
+  };
+}
+function refrescarCalculo(){
+  const d = leerDatos();
+  const p = calcularPuntos(d);
+  $('p-ascenso').textContent  = fmt(p.ascenso);
+  $('p-altura').textContent   = fmt(p.altura);
+  $('p-servicio').textContent = fmt(p.servicio);
+  $('p-velmax').textContent   = fmt(p.velmax);
+  $('p-tiempo').textContent   = fmt(p.tiempo);
+  $('p-total').textContent    = fmt(p.total);
+
+  $('d-ascenso').innerHTML  = d.ascenso ? fmt(d.ascenso) + ' m/min' : '&nbsp;';
+  $('d-altura').innerHTML   = d.altura ? fmt(d.altura) + ' m' : '&nbsp;';
+  $('d-servicio').innerHTML = d.servicio ? fmt(d.servicio) + 'º' : '&nbsp;';
+  $('d-velmax').innerHTML   = d.velmax ? fmt(d.velmax) + ' km/h' : '&nbsp;';
+  if (d.tiempoSeg === null) {
+    $('d-tiempo').innerHTML = $('in-tiempo').value.trim() ? 'formato: min:seg' : '&nbsp;';
+  } else if (d.tiempoSeg > 600) {
+    $('d-tiempo').textContent = 'supera el máximo de 10:00';
+  } else if (d.tiempoSeg <= 300) {
+    $('d-tiempo').textContent = 'bonus a partir de 5:00 de vuelo';
+  } else {
+    $('d-tiempo').textContent = 'sobran ' + Math.floor((600 - d.tiempoSeg) / 60) + ' min completos';
+  }
+}
+inputs.forEach(id => $(id).addEventListener('input', refrescarCalculo));
+refrescarCalculo();
+
+// ============================================================
+// PESTAÑAS
+// ============================================================
+document.querySelectorAll('.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab !== 'calc') cargarClasificaciones();
+  });
+});
+
+// ============================================================
+// SUPABASE
+// ============================================================
+const DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+let sb = null, ligaConfig = { dia_jornada: 0, modo_prueba: false };
+let esDiaJornada = false;
+
+if (window.FS_CONFIG && window.FS_CONFIG.url && window.FS_CONFIG.anonKey) {
+  sb = window.supabase.createClient(window.FS_CONFIG.url, window.FS_CONFIG.anonKey);
+}
+
+function diaSemanaMadrid(){
+  const nombre = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'Europe/Madrid' }).format(new Date());
+  return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].indexOf(nombre);
+}
+function fechaMadrid(){
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' }).format(new Date()); // YYYY-MM-DD
+}
+
+async function iniciarLiga(){
+  if (!sb) {
+    $('estado-jornada').textContent = 'SIN CONEXIÓN';
+    $('save-status').textContent = 'La calculadora funciona, pero falta configurar Supabase en config.js para guardar vuelos y ver clasificaciones.';
+    return;
+  }
+  const [cfgRes, partRes] = await Promise.all([
+    sb.from('liga_config').select('*').eq('id', 1).single(),
+    sb.from('participantes').select('id, nombre, halcon').eq('activo', true).order('nombre')
+  ]);
+  if (cfgRes.data) ligaConfig = cfgRes.data;
+
+  const sel = $('in-participante');
+  (partRes.data || []).forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.id;
+    o.textContent = p.nombre + (p.halcon ? ' · ' + p.halcon : '');
+    sel.appendChild(o);
+  });
+
+  esDiaJornada = ligaConfig.modo_prueba || diaSemanaMadrid() === ligaConfig.dia_jornada;
+  const st = $('save-status');
+  if (esDiaJornada) {
+    st.classList.add('ok');
+    st.textContent = ligaConfig.modo_prueba
+      ? 'MODO PRUEBA activo: se permite guardar cualquier día.'
+      : '¡Hoy es día de jornada! Puedes guardar tu vuelo.';
+    $('estado-jornada').textContent = 'JORNADA ABIERTA';
+    $('btn-guardar').disabled = false;
+  } else {
+    st.textContent = 'Hoy no es día de jornada. La calculadora está disponible, pero el guardado se habilita cada ' + DIAS[ligaConfig.dia_jornada] + '.';
+    $('estado-jornada').textContent = 'JORNADA CERRADA · ' + DIAS[ligaConfig.dia_jornada].toUpperCase() + 'S';
+  }
+}
+iniciarLiga();
+
+// ============================================================
+// GUARDAR VUELO
+// ============================================================
+function aviso(tipo, texto){
+  const m = $('save-msg');
+  m.className = 'msg ' + tipo;
+  m.textContent = texto;
+}
+
+$('btn-guardar').addEventListener('click', async () => {
+  const d = leerDatos();
+  const participanteId = $('in-participante').value;
+  const fichero = $('in-captura').files[0];
+
+  if (!participanteId) return aviso('err', 'Elige tu nombre en la lista de participantes.');
+  if (!fichero) return aviso('err', 'Adjunta la captura de pantalla del GPS: es obligatoria para validar el vuelo.');
+  if (d.tiempoSeg === null) return aviso('err', 'Indica el tiempo de vuelo en formato min:seg (ej.: 8:50).');
+  if (d.tiempoSeg > 600) return aviso('err', 'El tiempo máximo de vuelo es 10:00.');
+  if (!d.ascenso && !d.altura && !d.velmax) return aviso('err', 'Introduce los datos del vuelo antes de guardar.');
+
+  const btn = $('btn-guardar');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    const ext = (fichero.name.split('.').pop() || 'jpg').toLowerCase();
+    const ruta = fechaMadrid() + '/' + participanteId + '-' + Date.now() + '.' + ext;
+    const up = await sb.storage.from('capturas').upload(ruta, fichero);
+    if (up.error) throw new Error('No se pudo subir la captura: ' + up.error.message);
+    const capturaUrl = sb.storage.from('capturas').getPublicUrl(ruta).data.publicUrl;
+
+    const ins = await sb.from('vuelos').insert({
+      participante_id: participanteId,
+      ascenso: d.ascenso,
+      altura: d.altura,
+      servicio: d.servicio,
+      vel_max: d.velmax,
+      tiempo_seg: d.tiempoSeg,
+      captura_url: capturaUrl
+    }).select('pts_total').single();
+    if (ins.error) throw new Error(ins.error.message);
+
+    aviso('ok', 'Vuelo guardado para la jornada de hoy con ' + fmt(ins.data.pts_total) + ' puntos. ¡Suerte!');
+    $('in-captura').value = '';
+  } catch (e) {
+    aviso('err', e.message.includes('día de jornada')
+      ? 'El servidor ha rechazado el guardado: hoy no es día de jornada.'
+      : 'Error al guardar: ' + e.message);
+  } finally {
+    btn.disabled = !esDiaJornada; btn.textContent = 'Guardar vuelo';
+  }
+});
+
+// ============================================================
+// CLASIFICACIONES
+// (mejor vuelo de cada participante por jornada; la general
+//  suma los puntos de jornada de toda la temporada)
+// ============================================================
+let vuelosCache = null;
+
+async function cargarVuelos(){
+  const res = await sb.from('vuelos')
+    .select('participante_id, fecha_jornada, pts_total, estado, participantes(nombre, halcon)')
+    .neq('estado', 'rechazado')
+    .order('fecha_jornada', { ascending: false });
+  vuelosCache = res.data || [];
+  return vuelosCache;
+}
+
+function mejoresPorJornada(vuelos){
+  // Map fecha -> Map participante -> mejor vuelo
+  const jornadas = new Map();
+  vuelos.forEach(v => {
+    if (!jornadas.has(v.fecha_jornada)) jornadas.set(v.fecha_jornada, new Map());
+    const porPart = jornadas.get(v.fecha_jornada);
+    const previo = porPart.get(v.participante_id);
+    if (!previo || v.pts_total > previo.pts_total) porPart.set(v.participante_id, v);
+  });
+  return jornadas;
+}
+
+function fechaBonita(iso){
+  return new Date(iso + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+async function cargarClasificaciones(){
+  if (!sb) {
+    $('tbody-jornada').innerHTML = '<tr><td colspan="5" class="empty">Configura Supabase en config.js para ver la clasificación.</td></tr>';
+    $('tbody-general').innerHTML = '<tr><td colspan="4" class="empty">Configura Supabase en config.js para ver la clasificación.</td></tr>';
+    return;
+  }
+  const vuelos = await cargarVuelos();
+  const jornadas = mejoresPorJornada(vuelos);
+  const fechas = [...jornadas.keys()].sort().reverse();
+
+  // --- selector de jornadas ---
+  const sel = $('sel-jornada');
+  const seleccionPrevia = sel.value;
+  sel.innerHTML = '';
+  fechas.forEach((f, i) => {
+    const o = document.createElement('option');
+    o.value = f;
+    o.textContent = 'Jornada ' + (fechas.length - i) + ' · ' + fechaBonita(f);
+    sel.appendChild(o);
+  });
+  if (seleccionPrevia && fechas.includes(seleccionPrevia)) sel.value = seleccionPrevia;
+  sel.onchange = () => pintarJornada(jornadas);
+
+  pintarJornada(jornadas);
+  pintarGeneral(jornadas, fechas);
+}
+
+function pintarJornada(jornadas){
+  const tb = $('tbody-jornada');
+  const fecha = $('sel-jornada').value;
+  if (!fecha) { tb.innerHTML = '<tr><td colspan="5" class="empty">Aún no hay vuelos guardados.</td></tr>'; return; }
+  const filas = [...jornadas.get(fecha).values()].sort((a, b) => b.pts_total - a.pts_total);
+  tb.innerHTML = filas.map((v, i) =>
+    '<tr class="pos-' + (i + 1) + '"><td>' + (i + 1) + 'º</td>'
+    + '<td>' + v.participantes.nombre + '</td>'
+    + '<td>' + (v.participantes.halcon || '—') + '</td>'
+    + '<td class="num">' + fmt(v.pts_total) + '</td>'
+    + '<td>' + (v.estado === 'validado' ? '✔ validado' : 'pendiente') + '</td></tr>'
+  ).join('');
+}
+
+function pintarGeneral(jornadas, fechas){
+  const acumulado = new Map(); // participante -> {nombre, jornadas, total}
+  fechas.forEach(f => {
+    jornadas.get(f).forEach(v => {
+      const a = acumulado.get(v.participante_id) || { nombre: v.participantes.nombre, jornadas: 0, total: 0 };
+      a.jornadas += 1;
+      a.total += Number(v.pts_total);
+      acumulado.set(v.participante_id, a);
+    });
+  });
+  const filas = [...acumulado.values()].sort((a, b) => b.total - a.total);
+  const tb = $('tbody-general');
+  tb.innerHTML = filas.length
+    ? filas.map((a, i) =>
+        '<tr class="pos-' + (i + 1) + '"><td>' + (i + 1) + 'º</td><td>' + a.nombre + '</td>'
+        + '<td class="num">' + a.jornadas + '</td><td class="num">' + fmt(a.total) + '</td></tr>'
+      ).join('')
+    : '<tr><td colspan="4" class="empty">Aún no hay vuelos guardados.</td></tr>';
+}
+</script>
+</body>
+</html>

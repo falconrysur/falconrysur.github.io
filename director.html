@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liga FalconrySur · Panel del director</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+  :root{
+    --bg: #F7F7F3; --surface: #FFFFFF; --ink: #1C2117; --muted: #5B5F55;
+    --green: #2E6F45; --green-dark: #1F4E31; --green-light: #E6F0E8;
+    --brown: #8B5A34; --brown-light: #F1E7DB; --border: #E5E2D8; --gold: #F4C77A;
+    --display: 'Manrope', sans-serif; --body: 'Inter', sans-serif; --mono: 'IBM Plex Mono', monospace;
+    --radius: 16px;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{ background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.55; }
+  header{ background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:20; }
+  .nav{ max-width:1160px; margin:0 auto; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .brand{ font-family:var(--display); font-weight:800; font-size:1.15rem; text-decoration:none; color:var(--ink); }
+  .brand span{ color:var(--green); }
+  .nav small{ font-family:var(--mono); color:var(--muted); }
+  main{ max-width:1160px; margin:0 auto; padding:28px 20px 60px; }
+  h1{ font-family:var(--display); font-weight:800; font-size:clamp(1.4rem,3vw,2rem); margin-bottom:18px; }
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:22px; margin-bottom:22px; }
+  .card h2{ font-family:var(--display); font-size:1.05rem; font-weight:800; margin-bottom:14px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-weight:600; font-size:.88rem; margin-bottom:5px; }
+  .field input, .field select{
+    width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:10px;
+    font-family:var(--mono); font-size:.95rem; background:var(--bg); color:var(--ink);
+  }
+  .btn{ cursor:pointer; background:var(--green); color:#fff; border:none; border-radius:10px;
+    padding:11px 16px; font-family:var(--display); font-weight:800; font-size:.9rem; }
+  .btn:hover{ background:var(--green-dark); }
+  .btn.sec{ background:var(--surface); color:var(--ink); border:1px solid var(--border); }
+  .btn.danger{ background:#8C2F2F; }
+  .btn.small{ padding:7px 10px; font-size:.75rem; }
+  table{ width:100%; border-collapse:collapse; background:var(--surface); }
+  th, td{ padding:10px 12px; text-align:left; font-size:.85rem; border-bottom:1px solid var(--border); vertical-align:middle; }
+  th{ font-family:var(--mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); background:var(--bg); }
+  td.num, th.num{ text-align:right; font-family:var(--mono); }
+  .table-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); }
+  .empty{ color:var(--muted); font-size:.9rem; padding:18px; text-align:center; }
+  .msg{ margin-top:10px; font-size:.85rem; padding:10px 12px; border-radius:10px; display:none; }
+  .msg.err{ display:block; background:#FBEAEA; color:#8C2F2F; }
+  .msg.ok{ display:block; background:var(--green-light); color:var(--green-dark); }
+  .badge{ font-family:var(--mono); font-size:.68rem; padding:3px 8px; border-radius:999px; }
+  .badge.pendiente{ background:var(--brown-light); color:var(--brown); }
+  .badge.validado{ background:var(--green-light); color:var(--green-dark); }
+  .badge.rechazado{ background:#FBEAEA; color:#8C2F2F; }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .row .field{ margin-bottom:0; flex:1; min-width:160px; }
+  #app{ display:none; }
+  .login-wrap{ max-width:420px; margin:40px auto; }
+  .toggle{ display:flex; align-items:center; gap:10px; font-size:.9rem; font-weight:600; }
+  .toggle input{ width:20px; height:20px; }
+  a.captura-link{ color:var(--green); font-weight:600; }
+  footer{ text-align:center; padding:26px; color:var(--muted); font-size:.8rem; }
+  footer a{ color:var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a class="brand" href="liga-altaneria.html"><span>FalconrySur</span> · Liga</a>
+    <small>PANEL DEL DIRECTOR</small>
+    <button class="btn sec small" id="btn-salir" style="display:none;">Cerrar sesión</button>
+  </div>
+</header>
+
+<main>
+  <!-- ============ LOGIN ============ -->
+  <div class="login-wrap card" id="login">
+    <h1>Acceso director</h1>
+    <div class="field"><label>Email</label><input type="email" id="log-email" autocomplete="username"></div>
+    <div class="field"><label>Contraseña</label><input type="password" id="log-pass" autocomplete="current-password"></div>
+    <button class="btn" id="btn-login" style="width:100%;">Entrar</button>
+    <div class="msg" id="login-msg"></div>
+  </div>
+
+  <!-- ============ PANEL ============ -->
+  <div id="app">
+    <h1>Panel del director de liga</h1>
+
+    <div class="card">
+      <h2>Configuración de la jornada</h2>
+      <div class="row">
+        <div class="field">
+          <label>Día de jornada (guardado habilitado)</label>
+          <select id="cfg-dia">
+            <option value="0">Domingo</option><option value="1">Lunes</option>
+            <option value="2">Martes</option><option value="3">Miércoles</option>
+            <option value="4">Jueves</option><option value="5">Viernes</option>
+            <option value="6">Sábado</option>
+          </select>
+        </div>
+        <label class="toggle"><input type="checkbox" id="cfg-prueba"> Modo prueba (permite guardar cualquier día)</label>
+        <button class="btn" id="btn-cfg">Guardar configuración</button>
+      </div>
+      <div class="msg" id="cfg-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Participantes</h2>
+      <div class="row" style="margin-bottom:14px;">
+        <div class="field"><label>Nombre</label><input type="text" id="np-nombre" placeholder="Nombre del cetrero"></div>
+        <div class="field"><label>Halcón</label><input type="text" id="np-halcon" placeholder="Nombre del ave (opcional)"></div>
+        <button class="btn" id="btn-np">Añadir</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nombre</th><th>Halcón</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="tbody-part"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="msg" id="part-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Vuelos registrados</h2>
+      <div class="row" style="margin-bottom:14px;">
+        <div class="field">
+          <label>Jornada</label>
+          <select id="sel-jornada"><option value="">Todas</option></select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Jornada</th><th>Participante</th>
+            <th class="num">Asc.</th><th class="num">Alt.</th><th class="num">Serv.</th><th class="num">Vel.</th><th class="num">Tiempo</th>
+            <th class="num">Total</th><th>Captura</th><th>Estado</th><th></th>
+          </tr></thead>
+          <tbody id="tbody-vuelos"><tr><td colspan="11" class="empty">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="msg" id="vuelos-msg"></div>
+    </div>
+  </div>
+</main>
+
+<footer><a href="liga-altaneria.html">← Volver a la calculadora</a></footer>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+function fmt(n){ return (Math.round(n * 100) / 100).toLocaleString('es-ES', { maximumFractionDigits: 2 }); }
+function fmtTiempo(seg){ return Math.floor(seg / 60) + ':' + String(seg % 60).padStart(2, '0'); }
+function fechaBonita(iso){ return new Date(iso + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' }); }
+function aviso(id, tipo, texto){ const m = $(id); m.className = 'msg ' + tipo; m.textContent = texto; }
+
+let sb = null;
+if (window.FS_CONFIG && window.FS_CONFIG.url && window.FS_CONFIG.anonKey) {
+  sb = window.supabase.createClient(window.FS_CONFIG.url, window.FS_CONFIG.anonKey);
+} else {
+  aviso('login-msg', 'err', 'Falta configurar Supabase en config.js.');
+}
+
+// ============ SESIÓN ============
+async function comprobarSesion(){
+  if (!sb) return;
+  const { data } = await sb.auth.getSession();
+  if (data.session) mostrarPanel();
+}
+function mostrarPanel(){
+  $('login').style.display = 'none';
+  $('app').style.display = 'block';
+  $('btn-salir').style.display = 'inline-block';
+  cargarTodo();
+}
+$('btn-login').addEventListener('click', async () => {
+  if (!sb) return;
+  const { error } = await sb.auth.signInWithPassword({
+    email: $('log-email').value.trim(),
+    password: $('log-pass').value
+  });
+  if (error) return aviso('login-msg', 'err', 'No se pudo iniciar sesión: ' + error.message);
+  mostrarPanel();
+});
+$('log-pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-login').click(); });
+$('btn-salir').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
+comprobarSesion();
+
+// ============ CARGA GENERAL ============
+async function cargarTodo(){
+  cargarConfig();
+  cargarParticipantes();
+  cargarVuelos();
+}
+
+// ============ CONFIGURACIÓN ============
+async function cargarConfig(){
+  const { data } = await sb.from('liga_config').select('*').eq('id', 1).single();
+  if (data) { $('cfg-dia').value = data.dia_jornada; $('cfg-prueba').checked = data.modo_prueba; }
+}
+$('btn-cfg').addEventListener('click', async () => {
+  const { error } = await sb.from('liga_config')
+    .update({ dia_jornada: parseInt($('cfg-dia').value, 10), modo_prueba: $('cfg-prueba').checked })
+    .eq('id', 1);
+  aviso('cfg-msg', error ? 'err' : 'ok', error ? error.message : 'Configuración guardada.');
+});
+
+// ============ PARTICIPANTES ============
+async function cargarParticipantes(){
+  const { data } = await sb.from('participantes').select('*').order('nombre');
+  const tb = $('tbody-part');
+  if (!data || !data.length) { tb.innerHTML = '<tr><td colspan="4" class="empty">Sin participantes.</td></tr>'; return; }
+  tb.innerHTML = data.map(p =>
+    '<tr><td>' + p.nombre + '</td><td>' + (p.halcon || '—') + '</td>'
+    + '<td>' + (p.activo ? '<span class="badge validado">activo</span>' : '<span class="badge rechazado">inactivo</span>') + '</td>'
+    + '<td style="white-space:nowrap;">'
+    + '<button class="btn sec small" onclick="toggleParticipante(\'' + p.id + '\',' + !p.activo + ')">' + (p.activo ? 'Desactivar' : 'Activar') + '</button> '
+    + '<button class="btn danger small" onclick="borrarParticipante(\'' + p.id + '\', \'' + p.nombre.replace(/'/g, "\\'") + '\')">Eliminar</button>'
+    + '</td></tr>'
+  ).join('');
+}
+$('btn-np').addEventListener('click', async () => {
+  const nombre = $('np-nombre').value.trim();
+  if (!nombre) return aviso('part-msg', 'err', 'Escribe el nombre del participante.');
+  const { error } = await sb.from('participantes').insert({ nombre, halcon: $('np-halcon').value.trim() || null });
+  if (error) return aviso('part-msg', 'err', error.message);
+  $('np-nombre').value = ''; $('np-halcon').value = '';
+  aviso('part-msg', 'ok', 'Participante añadido.');
+  cargarParticipantes();
+});
+window.toggleParticipante = async (id, activo) => {
+  await sb.from('participantes').update({ activo }).eq('id', id);
+  cargarParticipantes();
+};
+window.borrarParticipante = async (id, nombre) => {
+  if (!confirm('¿Eliminar a "' + nombre + '"? Se borrarán también todos sus vuelos.')) return;
+  const { error } = await sb.from('participantes').delete().eq('id', id);
+  if (error) return aviso('part-msg', 'err', error.message);
+  cargarParticipantes(); cargarVuelos();
+};
+
+// ============ VUELOS ============
+let vuelosCache = [];
+async function cargarVuelos(){
+  const { data } = await sb.from('vuelos')
+    .select('*, participantes(nombre)')
+    .order('fecha_jornada', { ascending: false })
+    .order('pts_total', { ascending: false });
+  vuelosCache = data || [];
+
+  const fechas = [...new Set(vuelosCache.map(v => v.fecha_jornada))];
+  const sel = $('sel-jornada');
+  const previo = sel.value;
+  sel.innerHTML = '<option value="">Todas</option>';
+  fechas.forEach(f => {
+    const o = document.createElement('option');
+    o.value = f; o.textContent = fechaBonita(f);
+    sel.appendChild(o);
+  });
+  if (previo && fechas.includes(previo)) sel.value = previo;
+  sel.onchange = pintarVuelos;
+  pintarVuelos();
+}
+function pintarVuelos(){
+  const filtro = $('sel-jornada').value;
+  const filas = filtro ? vuelosCache.filter(v => v.fecha_jornada === filtro) : vuelosCache;
+  const tb = $('tbody-vuelos');
+  if (!filas.length) { tb.innerHTML = '<tr><td colspan="11" class="empty">Sin vuelos registrados.</td></tr>'; return; }
+  tb.innerHTML = filas.map(v =>
+    '<tr><td>' + fechaBonita(v.fecha_jornada) + '</td>'
+    + '<td>' + (v.participantes ? v.participantes.nombre : '—') + '</td>'
+    + '<td class="num">' + fmt(v.ascenso) + '</td>'
+    + '<td class="num">' + fmt(v.altura) + '</td>'
+    + '<td class="num">' + fmt(v.servicio) + 'º</td>'
+    + '<td class="num">' + fmt(v.vel_max) + '</td>'
+    + '<td class="num">' + fmtTiempo(v.tiempo_seg) + '</td>'
+    + '<td class="num"><strong>' + fmt(v.pts_total) + '</strong></td>'
+    + '<td><a class="captura-link" href="' + v.captura_url + '" target="_blank" rel="noopener">Ver</a></td>'
+    + '<td><span class="badge ' + v.estado + '">' + v.estado + '</span></td>'
+    + '<td style="white-space:nowrap;">'
+    + '<button class="btn small" onclick="estadoVuelo(\'' + v.id + '\', \'validado\')">✔</button> '
+    + '<button class="btn sec small" onclick="estadoVuelo(\'' + v.id + '\', \'rechazado\')">✘</button> '
+    + '<button class="btn danger small" onclick="borrarVuelo(\'' + v.id + '\')">Borrar</button>'
+    + '</td></tr>'
+  ).join('');
+}
+window.estadoVuelo = async (id, estado) => {
+  const { error } = await sb.from('vuelos').update({ estado }).eq('id', id);
+  if (error) return aviso('vuelos-msg', 'err', error.message);
+  cargarVuelos();
+};
+window.borrarVuelo = async (id) => {
+  if (!confirm('¿Borrar este vuelo definitivamente?')) return;
+  const { error } = await sb.from('vuelos').delete().eq('id', id);
+  if (error) return aviso('vuelos-msg', 'err', error.message);
+  cargarVuelos();
+};
+</script>
+</body>
+</html>
