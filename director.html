@@ -139,6 +139,27 @@
       </div>
       <div class="msg" id="vuelos-msg"></div>
     </div>
+
+    <div class="card">
+      <h2>Bajo vuelo · Resultados por jornada</h2>
+      <p style="color:var(--muted); font-size:.85rem; margin-bottom:14px;">Aquí introduces directamente el resultado de cada jornada de bajo vuelo (no hay calculadora pública para esta modalidad).</p>
+      <div class="row" style="margin-bottom:14px;">
+        <div class="field">
+          <label>Participante</label>
+          <select id="bv-np-participante"><option value="">— Elige un participante —</option></select>
+        </div>
+        <div class="field"><label>Fecha de la jornada</label><input type="date" id="bv-np-fecha"></div>
+        <div class="field"><label>Puntos</label><input type="text" id="bv-np-puntos" inputmode="decimal" placeholder="ej.: 85"></div>
+        <button class="btn" id="btn-bv-np">Añadir resultado</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Jornada</th><th>Participante</th><th>Halcón</th><th class="num">Puntos</th><th></th></tr></thead>
+          <tbody id="tbody-bv-vuelos"><tr><td colspan="5" class="empty">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="msg" id="bv-vuelos-msg"></div>
+    </div>
   </div>
 </main>
 
@@ -190,6 +211,7 @@ async function cargarTodo(){
   cargarConfig();
   cargarParticipantes();
   cargarVuelos();
+  cargarVuelosBajo();
 }
 
 // ============ CONFIGURACIÓN ============
@@ -208,15 +230,18 @@ $('btn-cfg').addEventListener('click', async () => {
 async function cargarParticipantes(){
   const { data } = await sb.from('participantes').select('*').order('nombre');
   const tb = $('tbody-part');
-  if (!data || !data.length) { tb.innerHTML = '<tr><td colspan="4" class="empty">Sin participantes.</td></tr>'; return; }
-  tb.innerHTML = data.map(p =>
-    '<tr><td>' + p.nombre + '</td><td>' + (p.halcon || '—') + '</td>'
-    + '<td>' + (p.activo ? '<span class="badge validado">activo</span>' : '<span class="badge rechazado">inactivo</span>') + '</td>'
-    + '<td style="white-space:nowrap;">'
-    + '<button class="btn sec small" onclick="toggleParticipante(\'' + p.id + '\',' + !p.activo + ')">' + (p.activo ? 'Desactivar' : 'Activar') + '</button> '
-    + '<button class="btn danger small" onclick="borrarParticipante(\'' + p.id + '\', \'' + p.nombre.replace(/'/g, "\\'") + '\')">Eliminar</button>'
-    + '</td></tr>'
-  ).join('');
+  if (!data || !data.length) { tb.innerHTML = '<tr><td colspan="4" class="empty">Sin participantes.</td></tr>'; }
+  else {
+    tb.innerHTML = data.map(p =>
+      '<tr><td>' + p.nombre + '</td><td>' + (p.halcon || '—') + '</td>'
+      + '<td>' + (p.activo ? '<span class="badge validado">activo</span>' : '<span class="badge rechazado">inactivo</span>') + '</td>'
+      + '<td style="white-space:nowrap;">'
+      + '<button class="btn sec small" onclick="toggleParticipante(\'' + p.id + '\',' + !p.activo + ')">' + (p.activo ? 'Desactivar' : 'Activar') + '</button> '
+      + '<button class="btn danger small" onclick="borrarParticipante(\'' + p.id + '\', \'' + p.nombre.replace(/'/g, "\\'") + '\')">Eliminar</button>'
+      + '</td></tr>'
+    ).join('');
+  }
+  cargarParticipantesSelectBV(data || []);
 }
 $('btn-np').addEventListener('click', async () => {
   const nombre = $('np-nombre').value.trim();
@@ -293,6 +318,72 @@ window.borrarVuelo = async (id) => {
   const { error } = await sb.from('vuelos').delete().eq('id', id);
   if (error) return aviso('vuelos-msg', 'err', error.message);
   cargarVuelos();
+};
+
+// ============ BAJO VUELO ============
+function cargarParticipantesSelectBV(data){
+  const sel = $('bv-np-participante');
+  const previo = sel.value;
+  sel.innerHTML = '<option value="">— Elige un participante —</option>';
+  data.filter(p => p.activo).forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.id;
+    o.textContent = p.nombre + (p.halcon ? ' · ' + p.halcon : '');
+    sel.appendChild(o);
+  });
+  if (previo) sel.value = previo;
+}
+
+if (!$('bv-np-fecha').value) {
+  $('bv-np-fecha').value = new Date().toISOString().slice(0, 10);
+}
+
+let vuelosBajoCache = [];
+async function cargarVuelosBajo(){
+  const { data } = await sb.from('vuelos_bajo')
+    .select('*, participantes(nombre, halcon)')
+    .order('fecha_jornada', { ascending: false });
+  vuelosBajoCache = data || [];
+  pintarVuelosBajo();
+}
+function pintarVuelosBajo(){
+  const tb = $('tbody-bv-vuelos');
+  if (!vuelosBajoCache.length) { tb.innerHTML = '<tr><td colspan="5" class="empty">Sin resultados de bajo vuelo.</td></tr>'; return; }
+  tb.innerHTML = vuelosBajoCache.map(v =>
+    '<tr><td>' + fechaBonita(v.fecha_jornada) + '</td>'
+    + '<td>' + (v.participantes ? v.participantes.nombre : '—') + '</td>'
+    + '<td>' + (v.participantes && v.participantes.halcon ? v.participantes.halcon : '—') + '</td>'
+    + '<td class="num"><strong>' + fmt(v.pts_total) + '</strong></td>'
+    + '<td style="white-space:nowrap;">'
+    + '<button class="btn danger small" onclick="borrarVueloBajo(\'' + v.id + '\')">Borrar</button>'
+    + '</td></tr>'
+  ).join('');
+}
+$('btn-bv-np').addEventListener('click', async () => {
+  const participanteId = $('bv-np-participante').value;
+  const fecha = $('bv-np-fecha').value;
+  const puntos = parseFloat(String($('bv-np-puntos').value).trim().replace(',', '.'));
+
+  if (!participanteId) return aviso('bv-vuelos-msg', 'err', 'Elige un participante.');
+  if (!fecha) return aviso('bv-vuelos-msg', 'err', 'Indica la fecha de la jornada.');
+  if (isNaN(puntos) || puntos < 0) return aviso('bv-vuelos-msg', 'err', 'Introduce una puntuación válida.');
+
+  const { error } = await sb.from('vuelos_bajo').insert({
+    participante_id: participanteId,
+    fecha_jornada: fecha,
+    pts_total: puntos
+  });
+  if (error) return aviso('bv-vuelos-msg', 'err', error.message);
+
+  $('bv-np-puntos').value = '';
+  aviso('bv-vuelos-msg', 'ok', 'Resultado añadido.');
+  cargarVuelosBajo();
+});
+window.borrarVueloBajo = async (id) => {
+  if (!confirm('¿Borrar este resultado de bajo vuelo?')) return;
+  const { error } = await sb.from('vuelos_bajo').delete().eq('id', id);
+  if (error) return aviso('bv-vuelos-msg', 'err', error.message);
+  cargarVuelosBajo();
 };
 </script>
 </body>
