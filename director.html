@@ -141,21 +141,45 @@
     </div>
 
     <div class="card">
+      <h2>Bajo vuelo · Participantes</h2>
+      <p style="color:var(--muted); font-size:.85rem; margin-bottom:14px;">Lista propia de participantes de bajo vuelo, independiente de la de altanería.</p>
+      <div class="row" style="margin-bottom:14px;">
+        <div class="field"><label>Nombre</label><input type="text" id="bvp-nombre" placeholder="Nombre del cetrero"></div>
+        <div class="field"><label>Halcón</label><input type="text" id="bvp-halcon" placeholder="Nombre del ave (opcional)"></div>
+        <button class="btn" id="btn-bvp">Añadir</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nombre</th><th>Halcón</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="tbody-bv-part"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="msg" id="bv-part-msg"></div>
+    </div>
+
+    <div class="card">
       <h2>Bajo vuelo · Resultados por jornada</h2>
-      <p style="color:var(--muted); font-size:.85rem; margin-bottom:14px;">Aquí introduces directamente el resultado de cada jornada de bajo vuelo (no hay calculadora pública para esta modalidad).</p>
+      <p style="color:var(--muted); font-size:.85rem; margin-bottom:14px;">Introduce la puntuación de cada uno de los 4 jueces; el total se calcula solo. No hay calculadora pública para esta modalidad.</p>
       <div class="row" style="margin-bottom:14px;">
         <div class="field">
           <label>Participante</label>
           <select id="bv-np-participante"><option value="">— Elige un participante —</option></select>
         </div>
-        <div class="field"><label>Fecha de la jornada</label><input type="date" id="bv-np-fecha"></div>
-        <div class="field"><label>Puntos</label><input type="text" id="bv-np-puntos" inputmode="decimal" placeholder="ej.: 85"></div>
+        <div class="field"><label>Jornada</label><input type="number" id="bv-np-jornada" min="1" step="1" placeholder="ej.: 1"></div>
+        <div class="field"><label>Juez 1</label><input type="text" id="bv-np-juez1" inputmode="decimal" placeholder="0"></div>
+        <div class="field"><label>Juez 2</label><input type="text" id="bv-np-juez2" inputmode="decimal" placeholder="0"></div>
+        <div class="field"><label>Juez 3</label><input type="text" id="bv-np-juez3" inputmode="decimal" placeholder="0"></div>
+        <div class="field"><label>Juez 4</label><input type="text" id="bv-np-juez4" inputmode="decimal" placeholder="0"></div>
         <button class="btn" id="btn-bv-np">Añadir resultado</button>
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Jornada</th><th>Participante</th><th>Halcón</th><th class="num">Puntos</th><th></th></tr></thead>
-          <tbody id="tbody-bv-vuelos"><tr><td colspan="5" class="empty">Cargando…</td></tr></tbody>
+          <thead><tr>
+            <th>Jornada</th><th>Participante</th><th>Halcón</th>
+            <th class="num">Juez 1</th><th class="num">Juez 2</th><th class="num">Juez 3</th><th class="num">Juez 4</th>
+            <th class="num">Total</th><th></th>
+          </tr></thead>
+          <tbody id="tbody-bv-vuelos"><tr><td colspan="9" class="empty">Cargando…</td></tr></tbody>
         </table>
       </div>
       <div class="msg" id="bv-vuelos-msg"></div>
@@ -211,6 +235,7 @@ async function cargarTodo(){
   cargarConfig();
   cargarParticipantes();
   cargarVuelos();
+  cargarBajoVueloParticipantes();
   cargarVuelosBajo();
 }
 
@@ -241,7 +266,6 @@ async function cargarParticipantes(){
       + '</td></tr>'
     ).join('');
   }
-  cargarParticipantesSelectBV(data || []);
 }
 $('btn-np').addEventListener('click', async () => {
   const nombre = $('np-nombre').value.trim();
@@ -320,7 +344,43 @@ window.borrarVuelo = async (id) => {
   cargarVuelos();
 };
 
-// ============ BAJO VUELO ============
+// ============ BAJO VUELO · PARTICIPANTES (lista propia, separada de altanería) ============
+async function cargarBajoVueloParticipantes(){
+  const { data } = await sb.from('participantes_bajo').select('*').order('nombre');
+  const tb = $('tbody-bv-part');
+  if (!data || !data.length) { tb.innerHTML = '<tr><td colspan="4" class="empty">Sin participantes.</td></tr>'; }
+  else {
+    tb.innerHTML = data.map(p =>
+      '<tr><td>' + p.nombre + '</td><td>' + (p.halcon || '—') + '</td>'
+      + '<td>' + (p.activo ? '<span class="badge validado">activo</span>' : '<span class="badge rechazado">inactivo</span>') + '</td>'
+      + '<td style="white-space:nowrap;">'
+      + '<button class="btn sec small" onclick="toggleParticipanteBV(\'' + p.id + '\',' + !p.activo + ')">' + (p.activo ? 'Desactivar' : 'Activar') + '</button> '
+      + '<button class="btn danger small" onclick="borrarParticipanteBV(\'' + p.id + '\', \'' + p.nombre.replace(/'/g, "\\'") + '\')">Eliminar</button>'
+      + '</td></tr>'
+    ).join('');
+  }
+  cargarParticipantesSelectBV(data || []);
+}
+$('btn-bvp').addEventListener('click', async () => {
+  const nombre = $('bvp-nombre').value.trim();
+  if (!nombre) return aviso('bv-part-msg', 'err', 'Escribe el nombre del participante.');
+  const { error } = await sb.from('participantes_bajo').insert({ nombre, halcon: $('bvp-halcon').value.trim() || null });
+  if (error) return aviso('bv-part-msg', 'err', error.message);
+  $('bvp-nombre').value = ''; $('bvp-halcon').value = '';
+  aviso('bv-part-msg', 'ok', 'Participante añadido.');
+  cargarBajoVueloParticipantes();
+});
+window.toggleParticipanteBV = async (id, activo) => {
+  await sb.from('participantes_bajo').update({ activo }).eq('id', id);
+  cargarBajoVueloParticipantes();
+};
+window.borrarParticipanteBV = async (id, nombre) => {
+  if (!confirm('¿Eliminar a "' + nombre + '"? Se borrarán también todos sus resultados de bajo vuelo.')) return;
+  const { error } = await sb.from('participantes_bajo').delete().eq('id', id);
+  if (error) return aviso('bv-part-msg', 'err', error.message);
+  cargarBajoVueloParticipantes(); cargarVuelosBajo();
+};
+
 function cargarParticipantesSelectBV(data){
   const sel = $('bv-np-participante');
   const previo = sel.value;
@@ -334,25 +394,26 @@ function cargarParticipantesSelectBV(data){
   if (previo) sel.value = previo;
 }
 
-if (!$('bv-np-fecha').value) {
-  $('bv-np-fecha').value = new Date().toISOString().slice(0, 10);
-}
-
+// ============ BAJO VUELO · RESULTADOS POR JORNADA ============
 let vuelosBajoCache = [];
 async function cargarVuelosBajo(){
   const { data } = await sb.from('vuelos_bajo')
-    .select('*, participantes(nombre, halcon)')
-    .order('fecha_jornada', { ascending: false });
+    .select('*, participantes_bajo(nombre, halcon)')
+    .order('numero_jornada', { ascending: false });
   vuelosBajoCache = data || [];
   pintarVuelosBajo();
 }
 function pintarVuelosBajo(){
   const tb = $('tbody-bv-vuelos');
-  if (!vuelosBajoCache.length) { tb.innerHTML = '<tr><td colspan="5" class="empty">Sin resultados de bajo vuelo.</td></tr>'; return; }
+  if (!vuelosBajoCache.length) { tb.innerHTML = '<tr><td colspan="9" class="empty">Sin resultados de bajo vuelo.</td></tr>'; return; }
   tb.innerHTML = vuelosBajoCache.map(v =>
-    '<tr><td>' + fechaBonita(v.fecha_jornada) + '</td>'
-    + '<td>' + (v.participantes ? v.participantes.nombre : '—') + '</td>'
-    + '<td>' + (v.participantes && v.participantes.halcon ? v.participantes.halcon : '—') + '</td>'
+    '<tr><td>' + v.numero_jornada + '</td>'
+    + '<td>' + (v.participantes_bajo ? v.participantes_bajo.nombre : '—') + '</td>'
+    + '<td>' + (v.participantes_bajo && v.participantes_bajo.halcon ? v.participantes_bajo.halcon : '—') + '</td>'
+    + '<td class="num">' + fmt(v.pts_juez1) + '</td>'
+    + '<td class="num">' + fmt(v.pts_juez2) + '</td>'
+    + '<td class="num">' + fmt(v.pts_juez3) + '</td>'
+    + '<td class="num">' + fmt(v.pts_juez4) + '</td>'
     + '<td class="num"><strong>' + fmt(v.pts_total) + '</strong></td>'
     + '<td style="white-space:nowrap;">'
     + '<button class="btn danger small" onclick="borrarVueloBajo(\'' + v.id + '\')">Borrar</button>'
@@ -361,22 +422,23 @@ function pintarVuelosBajo(){
 }
 $('btn-bv-np').addEventListener('click', async () => {
   const participanteId = $('bv-np-participante').value;
-  const fecha = $('bv-np-fecha').value;
-  const puntos = parseFloat(String($('bv-np-puntos').value).trim().replace(',', '.'));
+  const jornada = parseInt($('bv-np-jornada').value, 10);
+  const num = v => { const n = parseFloat(String(v).trim().replace(',', '.')); return isNaN(n) ? 0 : n; };
+  const j1 = num($('bv-np-juez1').value), j2 = num($('bv-np-juez2').value);
+  const j3 = num($('bv-np-juez3').value), j4 = num($('bv-np-juez4').value);
 
   if (!participanteId) return aviso('bv-vuelos-msg', 'err', 'Elige un participante.');
-  if (!fecha) return aviso('bv-vuelos-msg', 'err', 'Indica la fecha de la jornada.');
-  if (isNaN(puntos) || puntos < 0) return aviso('bv-vuelos-msg', 'err', 'Introduce una puntuación válida.');
+  if (!jornada || jornada < 1) return aviso('bv-vuelos-msg', 'err', 'Indica el número de jornada (1, 2, 3…).');
 
   const { error } = await sb.from('vuelos_bajo').insert({
     participante_id: participanteId,
-    fecha_jornada: fecha,
-    pts_total: puntos
+    numero_jornada: jornada,
+    pts_juez1: j1, pts_juez2: j2, pts_juez3: j3, pts_juez4: j4
   });
   if (error) return aviso('bv-vuelos-msg', 'err', error.message);
 
-  $('bv-np-puntos').value = '';
-  aviso('bv-vuelos-msg', 'ok', 'Resultado añadido.');
+  $('bv-np-juez1').value = ''; $('bv-np-juez2').value = ''; $('bv-np-juez3').value = ''; $('bv-np-juez4').value = '';
+  aviso('bv-vuelos-msg', 'ok', 'Resultado añadido (total calculado automáticamente).');
   cargarVuelosBajo();
 });
 window.borrarVueloBajo = async (id) => {

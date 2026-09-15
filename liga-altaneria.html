@@ -51,16 +51,15 @@
   }
   .tabs button.active{ background:var(--green); border-color:var(--green); color:#fff; }
 
-  .modalidad-tabs{ display:flex; gap:10px; margin-bottom:28px; }
+  .modalidad-tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:28px; }
   .modalidad-tabs button{
-    flex:1; cursor:pointer; font-family:var(--display); font-weight:800; font-size:1rem;
-    padding:16px 20px; border-radius:14px; border:2px solid var(--border);
-    background:var(--surface); color:var(--muted); transition:background .15s ease, color .15s ease, border-color .15s ease;
+    font-family:var(--mono); font-size:.85rem; font-weight:600; cursor:pointer;
+    padding:10px 16px; border-radius:999px; border:1px solid var(--border);
+    background:var(--surface); color:var(--muted);
   }
   .modalidad-tabs button.active{ background:var(--green); border-color:var(--green); color:#fff; }
   .modalidad{ display:none; }
   .modalidad.active{ display:block; }
-  @media (max-width:600px){ .modalidad-tabs{ flex-direction:column; } }
 
   .panel{ display:none; }
   .panel.active{ display:block; }
@@ -271,8 +270,12 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Pos.</th><th>Participante</th><th>Halcón</th><th class="num">Puntos</th></tr></thead>
-          <tbody id="bv-tbody-jornada"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody>
+          <thead><tr>
+            <th>Pos.</th><th>Participante</th><th>Halcón</th>
+            <th class="num">Juez 1</th><th class="num">Juez 2</th><th class="num">Juez 3</th><th class="num">Juez 4</th>
+            <th class="num">Total</th>
+          </tr></thead>
+          <tbody id="bv-tbody-jornada"><tr><td colspan="8" class="empty">Cargando…</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -617,8 +620,8 @@ let vuelosBajoCache = null;
 
 async function cargarVuelosBajo(){
   const res = await sb.from('vuelos_bajo')
-    .select('participante_id, fecha_jornada, pts_total, participantes(nombre, halcon)')
-    .order('fecha_jornada', { ascending: false });
+    .select('participante_id, numero_jornada, pts_juez1, pts_juez2, pts_juez3, pts_juez4, pts_total, participantes_bajo(nombre, halcon)')
+    .order('numero_jornada', { ascending: false });
   vuelosBajoCache = res.data || [];
   return vuelosBajoCache;
 }
@@ -626,8 +629,8 @@ async function cargarVuelosBajo(){
 function mejoresPorJornadaBajo(vuelos){
   const jornadas = new Map();
   vuelos.forEach(v => {
-    if (!jornadas.has(v.fecha_jornada)) jornadas.set(v.fecha_jornada, new Map());
-    const porPart = jornadas.get(v.fecha_jornada);
+    if (!jornadas.has(v.numero_jornada)) jornadas.set(v.numero_jornada, new Map());
+    const porPart = jornadas.get(v.numero_jornada);
     const previo = porPart.get(v.participante_id);
     if (!previo || v.pts_total > previo.pts_total) porPart.set(v.participante_id, v);
   });
@@ -636,48 +639,52 @@ function mejoresPorJornadaBajo(vuelos){
 
 async function cargarClasificacionesBajo(){
   if (!sb) {
-    $('bv-tbody-jornada').innerHTML = '<tr><td colspan="4" class="empty">Configura Supabase en config.js para ver la clasificación.</td></tr>';
+    $('bv-tbody-jornada').innerHTML = '<tr><td colspan="8" class="empty">Configura Supabase en config.js para ver la clasificación.</td></tr>';
     $('bv-tbody-general').innerHTML = '<tr><td colspan="4" class="empty">Configura Supabase en config.js para ver la clasificación.</td></tr>';
     return;
   }
   const vuelos = await cargarVuelosBajo();
   const jornadas = mejoresPorJornadaBajo(vuelos);
-  const fechas = [...jornadas.keys()].sort().reverse();
+  const numeros = [...jornadas.keys()].sort((a, b) => b - a);
 
   const sel = $('bv-sel-jornada');
   const seleccionPrevia = sel.value;
   sel.innerHTML = '';
-  fechas.forEach((f, i) => {
+  numeros.forEach(n => {
     const o = document.createElement('option');
-    o.value = f;
-    o.textContent = 'Jornada ' + (fechas.length - i) + ' · ' + fechaBonita(f);
+    o.value = n;
+    o.textContent = 'Jornada ' + n;
     sel.appendChild(o);
   });
-  if (seleccionPrevia && fechas.includes(seleccionPrevia)) sel.value = seleccionPrevia;
+  if (seleccionPrevia && numeros.includes(Number(seleccionPrevia))) sel.value = seleccionPrevia;
   sel.onchange = () => pintarJornadaBajo(jornadas);
 
   pintarJornadaBajo(jornadas);
-  pintarGeneralBajo(jornadas, fechas);
+  pintarGeneralBajo(jornadas, numeros);
 }
 
 function pintarJornadaBajo(jornadas){
   const tb = $('bv-tbody-jornada');
-  const fecha = $('bv-sel-jornada').value;
-  if (!fecha) { tb.innerHTML = '<tr><td colspan="4" class="empty">Aún no hay resultados de bajo vuelo.</td></tr>'; return; }
-  const filas = [...jornadas.get(fecha).values()].sort((a, b) => b.pts_total - a.pts_total);
+  const numero = Number($('bv-sel-jornada').value);
+  if (!numero) { tb.innerHTML = '<tr><td colspan="8" class="empty">Aún no hay resultados de bajo vuelo.</td></tr>'; return; }
+  const filas = [...jornadas.get(numero).values()].sort((a, b) => b.pts_total - a.pts_total);
   tb.innerHTML = filas.map((v, i) =>
     '<tr class="pos-' + (i + 1) + '"><td>' + (i + 1) + 'º</td>'
-    + '<td>' + v.participantes.nombre + '</td>'
-    + '<td>' + (v.participantes.halcon || '—') + '</td>'
-    + '<td class="num">' + fmt(v.pts_total) + '</td></tr>'
+    + '<td>' + v.participantes_bajo.nombre + '</td>'
+    + '<td>' + (v.participantes_bajo.halcon || '—') + '</td>'
+    + '<td class="num">' + fmt(v.pts_juez1) + '</td>'
+    + '<td class="num">' + fmt(v.pts_juez2) + '</td>'
+    + '<td class="num">' + fmt(v.pts_juez3) + '</td>'
+    + '<td class="num">' + fmt(v.pts_juez4) + '</td>'
+    + '<td class="num"><strong>' + fmt(v.pts_total) + '</strong></td></tr>'
   ).join('');
 }
 
-function pintarGeneralBajo(jornadas, fechas){
+function pintarGeneralBajo(jornadas, numeros){
   const acumulado = new Map();
-  fechas.forEach(f => {
-    jornadas.get(f).forEach(v => {
-      const a = acumulado.get(v.participante_id) || { nombre: v.participantes.nombre, jornadas: 0, total: 0 };
+  numeros.forEach(n => {
+    jornadas.get(n).forEach(v => {
+      const a = acumulado.get(v.participante_id) || { nombre: v.participantes_bajo.nombre, jornadas: 0, total: 0 };
       a.jornadas += 1;
       a.total += Number(v.pts_total);
       acumulado.set(v.participante_id, a);
