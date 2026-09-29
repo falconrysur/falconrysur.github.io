@@ -148,6 +148,15 @@
 
   .jornada-bar{ display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
   .jornada-bar select{ padding:9px 12px; border:1px solid var(--border); border-radius:10px; font-family:var(--mono); background:var(--surface); color:var(--ink); }
+
+  .destacados{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:22px; }
+  @media (max-width:760px){ .destacados{ grid-template-columns:1fr 1fr; } }
+  .destacados h2{ grid-column:1/-1; font-family:var(--display); font-weight:800; font-size:1.02rem; margin-bottom:2px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink); }
+  .dcard{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+  .dcard .k{ font-family:var(--mono); font-size:.68rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .dcard .n{ font-family:var(--display); font-weight:800; font-size:1.2rem; color:var(--ink); margin-top:6px; line-height:1.25; }
+  .dcard .n span{ color:var(--muted); font-weight:600; }
+  .dcard .v{ font-family:var(--mono); font-weight:700; font-size:1.3rem; color:var(--gold); margin-top:6px; }
   footer{ text-align:center; padding:26px; color:var(--muted); font-size:.8rem; }
   footer a{ color:var(--muted); }
 </style>
@@ -259,9 +268,18 @@
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Pos.</th><th>Participante</th><th>Halcón</th><th class="num">Puntos</th><th>Estado</th></tr></thead>
-        <tbody id="tbody-jornada"><tr><td colspan="5" class="empty">Cargando…</td></tr></tbody>
+        <thead><tr>
+          <th>Pos.</th><th>Participante</th><th>Halcón</th>
+          <th class="num">Asc.</th><th class="num">Alt.</th><th class="num">Serv.</th><th class="num">Vel.</th><th class="num">Tiempo</th>
+          <th class="num">Total</th><th>Estado</th>
+        </tr></thead>
+        <tbody id="tbody-jornada"><tr><td colspan="10" class="empty">Cargando…</td></tr></tbody>
       </table>
+    </div>
+
+    <!-- ================= MEJORES DE LA JORNADA ================= -->
+    <div class="destacados" id="destacados-jornada" style="display:none;">
+      <h2>Mejores de la jornada</h2>
     </div>
   </section>
 
@@ -299,7 +317,7 @@
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>Pos.</th><th>Participante</th><th>Halcón</th>
+            <th>Pos.</th><th>Participante</th><th>Ave</th>
             <th class="num">Juez 1</th><th class="num">Juez 2</th><th class="num">Juez 3</th><th class="num">Juez 4</th>
             <th class="num">Total</th>
           </tr></thead>
@@ -358,6 +376,9 @@ function calcularPuntos(d){
 }
 function fmt(n){
   return (Math.round(n * 100) / 100).toLocaleString('es-ES', { maximumFractionDigits: 2 });
+}
+function fmtTiempo(seg){
+  return Math.floor(seg / 60) + ':' + String(seg % 60).padStart(2, '0');
 }
 
 // ============================================================
@@ -553,7 +574,7 @@ let vuelosCache = null;
 
 async function cargarVuelos(){
   const res = await sb.from('vuelos')
-    .select('participante_id, fecha_jornada, pts_total, estado, participantes(nombre, halcon)')
+    .select('participante_id, fecha_jornada, ascenso, altura, servicio, vel_max, tiempo_seg, pts_total, estado, participantes(nombre, halcon)')
     .neq('estado', 'rechazado')
     .order('fecha_jornada', { ascending: false });
   vuelosCache = res.data || [];
@@ -578,7 +599,7 @@ function fechaBonita(iso){
 
 async function cargarClasificaciones(){
   if (!sb) {
-    $('tbody-jornada').innerHTML = '<tr><td colspan="5" class="empty">Configura Supabase en config.js para ver la clasificación.</td></tr>';
+    $('tbody-jornada').innerHTML = '<tr><td colspan="10" class="empty">Configura Supabase en config.js para ver la clasificación.</td></tr>';
     $('tbody-general').innerHTML = '<tr><td colspan="4" class="empty">Configura Supabase en config.js para ver la clasificación.</td></tr>';
     return;
   }
@@ -606,15 +627,48 @@ async function cargarClasificaciones(){
 function pintarJornada(jornadas){
   const tb = $('tbody-jornada');
   const fecha = $('sel-jornada').value;
-  if (!fecha) { tb.innerHTML = '<tr><td colspan="5" class="empty">Aún no hay vuelos guardados.</td></tr>'; return; }
+  if (!fecha) {
+    tb.innerHTML = '<tr><td colspan="10" class="empty">Aún no hay vuelos guardados.</td></tr>';
+    $('destacados-jornada').style.display = 'none';
+    return;
+  }
   const filas = [...jornadas.get(fecha).values()].sort((a, b) => b.pts_total - a.pts_total);
   tb.innerHTML = filas.map((v, i) =>
     '<tr class="pos-' + (i + 1) + '"><td>' + (i + 1) + 'º</td>'
     + '<td>' + v.participantes.nombre + '</td>'
     + '<td>' + (v.participantes.halcon || '—') + '</td>'
-    + '<td class="num">' + fmt(v.pts_total) + '</td>'
+    + '<td class="num">' + fmt(v.ascenso) + ' m/min</td>'
+    + '<td class="num">' + fmt(v.altura) + ' m</td>'
+    + '<td class="num">' + fmt(v.servicio) + 'º</td>'
+    + '<td class="num">' + fmt(v.vel_max) + ' km/h</td>'
+    + '<td class="num">' + fmtTiempo(v.tiempo_seg) + '</td>'
+    + '<td class="num"><strong>' + fmt(v.pts_total) + '</strong></td>'
     + '<td>' + (v.estado === 'validado' ? '✔ validado' : 'pendiente') + '</td></tr>'
   ).join('');
+  pintarDestacados(filas);
+}
+
+function pintarDestacados(filas){
+  const caja = $('destacados-jornada');
+  if (!filas.length) { caja.style.display = 'none'; return; }
+
+  const mejor = campo => filas.reduce((a, b) => (Number(b[campo]) > Number(a[campo]) ? b : a));
+  const quien = v => v.participantes.nombre + (v.participantes.halcon ? ' <span>· ' + v.participantes.halcon + '</span>' : '');
+
+  const destacados = [
+    { k: 'Mejor ascenso',   campo: 'ascenso',  v: x => fmt(x.ascenso) + ' m/min' },
+    { k: 'Mayor altura',    campo: 'altura',   v: x => fmt(x.altura) + ' m' },
+    { k: 'Mejor servicio',  campo: 'servicio', v: x => fmt(x.servicio) + 'º' },
+    { k: 'Mayor velocidad', campo: 'vel_max',  v: x => fmt(x.vel_max) + ' km/h' },
+  ];
+
+  caja.innerHTML = '<h2>Mejores de la jornada</h2>' + destacados.map(d => {
+    const x = mejor(d.campo);
+    return '<div class="dcard"><div class="k">' + d.k + '</div>'
+      + '<div class="n">' + quien(x) + '</div>'
+      + '<div class="v">' + d.v(x) + '</div></div>';
+  }).join('');
+  caja.style.display = 'grid';
 }
 
 function pintarGeneral(jornadas, fechas){
